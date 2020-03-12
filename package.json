@@ -1,0 +1,12 @@
+{
+  "name": "i90",
+  "description": "",
+  "version": "0.1.0",
+  "dependencies": {},
+  "devDependencies": {
+    "serverless-associate-waf": "^1.1.1",
+    "serverless-domain-manager": "^3.3.0",
+    "serverless-plugin-aws-alerts": "^1.4.0",
+    "serverless-python-requirements": "^5.0.1"
+  }
+}

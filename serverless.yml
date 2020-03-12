@@ -1,0 +1,143 @@
+
+# i90
+
+service: i90
+
+frameworkVersion: ">=1.1.0 <2.0.0"
+
+custom:
+  stage: ${opt:stage, env:STAGE, "dev"}
+  projectRoot: ${env:GITHUB_WORKSPACE, "${env:PWD}/../"}
+
+  i90:
+    domain: "${self:custom.stage}-i90.example.com"
+
+  deploy:
+    bucket_name: ${ssm:/${self:custom.stage}/s3/deploys/bucket/name~true}
+    bucket_arn: ${ssm:/${self:custom.stage}/s3/deploys/bucket/arn~true}
+
+  pythonRequirements:
+    dockerizePip: true
+    slim: true
+    layer: true
+    useDownloadCache: false
+    useStaticCache: false
+
+  customDomain:
+    domainName: "${self:custom.i90.domain}"
+    stage: ${self:custom.stage}
+    certificateName: "*.example.com"
+    createRoute53Record: true
+    securityPolicy: tls_1_2 # current top tier
+
+  associateWaf:
+    name: ${self:custom.stage}-waf-global
+
+  environment:
+    STAGE: ${self:custom.stage}
+    INFRASTRUCTURE: ${self:custom.stage}
+    MY_PROTOCOL: https
+    MY_HOST: "${self:custom.i90.domain}"
+    REDIRECTS_TABLE: "${ssm:/${self:custom.stage}/dynamo/i90_redirects/table/name~true}"
+    TRACKING_STREAM: "${ssm:/${self:custom.stage}/kinesisfirehose/i90-tracking/name~true}"
+
+  layers:
+    - {Ref: PythonRequirementsLambdaLayer}
+
+  alerts:
+    nameTemplate: $[functionName]-$[metricName]-Alarm
+    topics:
+      alarm:
+        topic: ${ssm:/${self:custom.stage}/sns/alarms/name~true}
+    definitions:
+      functionInvocations:
+        threshold: 5000
+      functionDuration:
+        threshold: 1000
+    alarms:
+      - functionThrottles
+      - functionErrors
+      - functionInvocations
+      - functionDuration
+
+provider:
+  name: aws
+  runtime: python3.7
+  region: ${opt:region, env:REGION, "us-east-1"}
+  stage: ${self:custom.stage}
+  deploymentBucket:
+    name: ${self:custom.deploy.bucket_name}
+    blockPublicAccess: true
+  apiKeys:
+    - ${self:custom.stage}-i90-default
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - "dynamodb:*"
+      Resource:
+        - ${ssm:/${self:custom.stage}/dynamo/i90_redirects/table/arn~true}
+    - Effect: Allow
+      Action:
+        - "firehose:PutRecord"
+      Resource:
+        - ${ssm:/${self:custom.stage}/kinesisfirehose/i90-tracking/arn~true}
+  environment: ${self:custom.environment}
+
+package:
+  excludeDevDependencies: true
+  individually: false
+  exclude:
+    - ".pytest_cache/**"
+    - "node_modules/**"
+    - ".vscode/**"
+
+functions:
+  redirects:
+    name: ${self:custom.stage}-i90-redirect
+    handler: handlers.redirect
+    layers: ${self:custom.layers}
+    events:
+      - http:
+          method: GET
+          path: x/{token}
+      - schedule:
+          rate: rate(4 minutes)
+  get-json:
+    name: ${self:custom.stage}-i90-get-json
+    handler: handlers.get_redirect
+    layers: ${self:custom.layers}
+    events:
+      - http:
+          method: GET
+          path: v1/redirect/{token}
+          private: true
+      - schedule:
+          rate: rate(4 minutes)
+  claim:
+    name: ${self:custom.stage}-i90-claim
+    handler: handlers.claim
+    layers: ${self:custom.layers}
+    events:
+      - http:
+          method: POST
+          path: v1/claim
+          private: true
+      - schedule:
+          rate: rate(4 minutes)
+  conceive:
+    name: ${self:custom.stage}-i90-conceive
+    handler: handlers.conceive
+    layers: ${self:custom.layers}
+    events:
+      - http:
+          method: POST
+          path: v1/conceive
+          private: true
+      - schedule:
+          rate: rate(4 minutes)
+
+plugins:
+  - serverless-python-requirements
+  - serverless-domain-manager
+  - serverless-associate-waf
+  - serverless-plugin-aws-alerts

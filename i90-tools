@@ -1,0 +1,29 @@
+#!/usr/bin/env python
+
+"""i90.
+
+Usage:
+  i90-tools <command> --api-endpoint=<api-endpoint> [--token=<token>] [--destination=<destination>] [--api-key=<api-key>]
+  i90-tools (-h | --help)
+  i90-tools --version
+
+Options:
+  -h --help                      Show this screen.
+  --version                      Show version.
+  <command>                      What're you looking to do?
+  -api-endpoint=<api-endpoint>   Where does the pike's api live?
+  [--token=<token>]              (If applicable) What's the token
+  [--destination=<destination>]  (If applicable) What's the redirect's destination?
+  [--api-key=<api-key>]          (Default provided) Pass in your own api-key
+"""
+
+from docopt import docopt
+from i90.cli import Cli
+
+if __name__ == "__main__":
+    cli = Cli(docopt(__doc__, version="i90-tools 0.1.0"))
+    try:
+        print(cli.run())
+    except Exception as e:
+        print(f"FAILURE: {str(e)}")
+        exit(1)
