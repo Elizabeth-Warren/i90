@@ -30,9 +30,6 @@ custom:
     createRoute53Record: true
     securityPolicy: tls_1_2 # current top tier
 
-  associateWaf:
-    name: ${self:custom.stage}-waf-global
-
   environment:
     STAGE: ${self:custom.stage}
     INFRASTRUCTURE: ${self:custom.stage}
