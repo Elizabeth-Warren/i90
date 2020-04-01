@@ -1,6 +1,6 @@
 # I90
 
-I90 is a link shortner. It exposes a minimal API that users can call to create new redirects. Whenever someone visits the `short_url` returned by the API, the user will be redirected to the destination the caller passed in. Records of every visit to one of these URLs are synced to Redshift/Civis within 5 minutes. Handily, API callers are encouraged to pass in additional information about the redirect they're creating. That information is carried to Redshift as well.
+I90 is a link shortener. It exposes a minimal API that users can call to create new redirects. Whenever someone visits the `short_url` returned by the API, the user will be redirected to the destination the caller passed in. Records of every visit to one of these URLs are synced to Redshift/Civis within 5 minutes. Handily, API callers are encouraged to pass in additional information about the redirect they're creating. That information is carried to Redshift as well.
 
 Data in Redshift is stored as JSON in a single column called `__raw`. This JSON is projected into a view for easy querying. Our Redshift cluster is currently disk-bound rather than CPU-bound. Using the cores available there to parse the JSON is preferable to using the disks for additional columns.
 
